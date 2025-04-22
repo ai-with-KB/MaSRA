@@ -1,18 +1,30 @@
 # masra_app.py
 import streamlit as st
 from textblob import TextBlob
+import requests
+from datetime import datetime
+
 
 # ---------- SETTINGS ----------
 st.set_page_config(page_title="MaSRA Pro", layout="wide")
 
-# ---------- MOCK NEWS FETCHER ----------
-mock_headlines = [
-    "Federal Reserve signals further interest rate hikes",
-    "US inflation eases to 2.3% in latest CPI report",
-    "Tensions escalate in Taiwan Strait after military drills",
-    "OPEC announces oil production cuts amid falling prices",
-    "US job growth slows sharply, unemployment ticks up"
-]
+# ---------- LIVE NEWS FETCHER ----------
+def fetch_news(api_key, query='economy'):
+    url = (
+        f"https://newsapi.org/v2/everything?"
+        f"q={query}&language=en&sortBy=publishedAt&pageSize=5&apiKey={dfbfd7e2600f490198539e933b0daa29}"
+    )
+    try:
+        res = requests.get(url)
+        if res.status_code == 200:
+            articles = res.json().get('articles', [])
+            return [f"{a['title']} ({datetime.strptime(a['publishedAt'], '%Y-%m-%dT%H:%M:%SZ').strftime('%b %d, %H:%M')})"
+                    for a in articles]
+        else:
+            return [f"Error: {res.status_code} - {res.text}"]
+    except Exception as e:
+        return [f"Exception: {str(e)}"]
+
 
 # ---------- MACRO TOPIC CLASSIFIER ----------
 macro_keywords = {
@@ -79,8 +91,20 @@ st.title("📊 MaSRA Pro — Macro Sentiment Risk Adjuster")
 st.markdown("A professional real-time macro-risk analysis tool for portfolios 💼")
 
 # Sidebar
-st.sidebar.header("📰 Sample Headlines")
-selected_headline = st.sidebar.selectbox("Pick a headline to analyze:", mock_headlines)
+st.sidebar.header("🔑 API Key + News Fetch")
+api_key = st.sidebar.text_input("Enter your NewsAPI key:", type="password")
+query = st.sidebar.text_input("Search Topic (e.g. inflation, jobs)", value="economy")
+
+if api_key:
+    live_headlines = fetch_news(api_key, query)
+    selected_headline = st.sidebar.selectbox("Live Headlines:", live_headlines)
+else:
+    selected_headline = st.sidebar.selectbox("Pick a static headline:", [
+        "Federal Reserve signals further interest rate hikes",
+        "US inflation eases to 2.3% in latest CPI report"
+    ])
+
+
 
 # Analysis button
 if st.sidebar.button("🔍 Run Analysis"):
